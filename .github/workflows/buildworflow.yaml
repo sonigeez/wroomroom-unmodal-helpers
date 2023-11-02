@@ -38,13 +38,49 @@ jobs:
           sudo apt update
           sudo apt install -y wine64 wine32
 
-      - name: Build Electron App
-        run: npm run build
-
-      - name: Release to GitHub
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build/release Electron app
+        uses: samuelmeuli/action-electron-builder@v1
         with:
-          tag_name: ${{github.run_number}}
-          release_name: ${{github.run_number}}
+          # GitHub token, automatically provided to the action
+          # (No need to define this secret in the repo settings)
+          github_token: ${{ secrets.github_token }}
+
+          # If the commit is tagged with a version (e.g. "v1.0.0"),
+          # release the app after building
+          release: ${{ startsWith(github.ref, 'refs/tags/v') }}
+# name: Build/release
+
+# on: push
+
+# jobs:
+#   release:
+#     runs-on: ${{ matrix.os }}
+
+#     strategy:
+#       matrix:
+#         os: [macos-latest, ubuntu-latest, windows-latest]
+
+#     steps:
+#       - name: Check out Git repository
+#         uses: actions/checkout@v1
+
+#       - name: Install Node.js, NPM and Yarn
+#         uses: actions/setup-node@v1
+#         with:
+#           node-version: 10
+#       - name: Install subfolder deps
+#         run: |
+#           cd wroomroom-unmodal
+#           npm install
+#           cd ..
+
+# - name: Build/release Electron app
+#   uses: samuelmeuli/action-electron-builder@v1
+#   with:
+#     # GitHub token, automatically provided to the action
+#     # (No need to define this secret in the repo settings)
+#     github_token: ${{ secrets.GH_TOKEN }}
+
+#     # If the commit is tagged with a version (e.g. "v1.0.0"),
+#     # release the app after building
+#     release: ${{ startsWith(github.ref, 'refs/tags/v') }}
