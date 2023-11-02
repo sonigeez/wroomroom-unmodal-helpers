@@ -114,7 +114,7 @@ function getResolvedPath(relativePath) {
 
 app.on("ready", async () => {
   try {
-    await connectToWiFi("wifi-ssd", "wifi-password");
+    await connectToWiFi("bharatxoni5gz", "Bharat@123");
     createWindow();
     const autoLauncher = new AutoLaunch({
       name: "Wroomroom", // Replace with your app's name
