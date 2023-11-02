@@ -9,7 +9,7 @@
     "package-mac": "electron-packager . Wroomroom --platform=darwin --arch=x64",
     "package-linux": "electron-packager . Wroomroom --platform=linux --arch=x64",
     "build": "npm run package-win && npm run package-mac && npm run package-linux",
-    "release": "gh-release"
+    "release": "gh-release --yes"
   },
   "keywords": [],
   "author": "",
