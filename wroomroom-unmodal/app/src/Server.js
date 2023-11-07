@@ -95,27 +95,25 @@ if (config.chatGPT.enabled) {
 
 // directory
 const dir = {
-  public: path.join(__dirname, "../../", "public"),
+  public: path.join(__dirname, '../../', 'public'),
 };
 
 // html views
 const views = {
-  about: path.join(__dirname, "../../", "public/views/about.html"),
-  landing: path.join(__dirname, "../../", "public/views/landing.html"),
-  login: path.join(__dirname, "../../", "public/views/login.html"),
-  newRoom: path.join(__dirname, "../../", "public/views/newroom.html"),
-  notFound: path.join(__dirname, "../../", "public/views/404.html"),
-  permission: path.join(__dirname, "../../", "public/views/permission.html"),
-  privacy: path.join(__dirname, "../../", "public/views/privacy.html"),
-  room: path.join(__dirname, "../../", "public/views/Room.html"),
-  viewer: path.join(__dirname, "../../", "public/views/viewer.html"),
-  qrcode: path.join(__dirname, "../../", "public/views/qrcode.html"),
-  horizontal: path.join(
-    __dirname,
-    "../../",
-    "public/views/horizontalView.html"
-  ),
-  stream: path.join(__dirname, "../../", "public/views/stream.html"),
+
+  about: path.join(dir.public, 'views', 'about.html'),
+  landing: path.join(dir.public, 'views', 'landing.html'),
+  login: path.join(dir.public, 'views', 'login.html'),
+  newRoom: path.join(dir.public, 'views', 'newroom.html'),
+  notFound: path.join(dir.public, 'views', '404.html'),
+  permission: path.join(dir.public, 'views', 'permission.html'),
+  privacy: path.join(dir.public, 'views', 'privacy.html'),
+  room: path.join(dir.public, 'views', 'Room.html'),
+  viewer: path.join(dir.public, 'views', 'viewer.html'),
+  qrcode: path.join(dir.public, 'views', 'qrcode.html'),
+  horizontal: path.join(dir.public, 'views', 'horizontalView.html'),
+  stream: path.join(dir.public, 'views', 'stream.html'),
+
 };
 
 let announcedIP = config.mediasoup.webRtcTransport.listenIps[0].announcedIp; // AnnouncedIP (server public IPv4)
