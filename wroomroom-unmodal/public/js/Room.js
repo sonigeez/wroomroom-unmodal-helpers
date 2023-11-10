@@ -108,6 +108,11 @@ let isRoomLocked = false;
 
 let initStream = null;
 
+// refresh page on clicking button with id 'refresh'
+document.getElementById('refresh').onclick = function () {
+    location.reload();
+};
+
 // ####################################################
 // INIT ROOM
 // ####################################################

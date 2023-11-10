@@ -1,5 +1,5 @@
 const AutoLaunch = require("auto-launch"); // Import the auto-launch module
-const { app, BrowserWindow, screen } = require("electron");
+const { app, ipcMain, BrowserWindow, screen } = require("electron");
 const wifi = require("node-wifi");
 const os = require("os");
 const path = require("path");
@@ -10,7 +10,6 @@ const startServer = require('./wroomroom-unmodal/app/src/Server.js');
 unhandled();
 
 
-const logFile = path.join(app.getPath('userData'), 'your-app-log.log');
 
 
 function getLocalIP() {
@@ -46,7 +45,42 @@ async function connectToWiFi(ssid, password) {
   });
 }
 
-function createWindow() {
+
+ipcMain.on("wifi-credentials", async (event, { ssid, password }) => {
+  console.log(ssid, password);
+  try {
+    await connectToWiFi(ssid, password);
+    console.log("connection-success");
+    //wait for 5 second
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    runServer(); // Your function to create main app windows
+    event.reply("connection-success");
+
+    // ... Start your server and other components ...
+  } catch (error) {
+    // Handle connection error (e.g., show error message, prompt retry)
+    console.error("WiFi connection failed:", error);
+    event.reply("connection-failed");
+  }
+});
+
+function createWifiConfigWindow() {
+  const wifiConfigWindow = new BrowserWindow({
+    width: 400,
+    height: 300,
+    webPreferences: {
+      nodeIntegration: true, // Enable Node integration
+      contextIsolation: false // Disable context isolation
+    },
+  });
+
+  // Load the WiFi configuration page
+  wifiConfigWindow.loadFile("wifi-config.html");
+
+  return wifiConfigWindow;
+}
+
+function runServer() {
   const localIP = getLocalIP();
   // Wait until the app is ready
   app.whenReady().then(() => {
@@ -112,21 +146,8 @@ function getResolvedPath(relativePath) {
 
 
 
-app.on("ready", async () => {
-  try {
-    await connectToWiFi("bharatxoni5gz", "Bharat@123");
-    createWindow();
-    const autoLauncher = new AutoLaunch({
-      name: "Wroomroom", // Replace with your app's name
-      path: app.getPath("exe"),
-    });
-    autoLauncher.isEnabled().then((isEnabled) => {
-      if (!isEnabled) autoLauncher.enable();
-    });
-  } catch (error) {
-    console.error("Error:", error);
-    logToFile(error);
-  }
+app.on("ready", () => {
+  createWifiConfigWindow();
 });
 
 app.on(
@@ -138,10 +159,4 @@ app.on(
   }
 );
 
-
-function logToFile(message) {
-  fs.appendFile(logFile, message + '\n', (err) => {
-      if (err) console.error('Error writing to log file:', err);
-  });
-}
 
