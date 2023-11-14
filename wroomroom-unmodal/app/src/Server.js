@@ -9,25 +9,15 @@ const mediasoupClient = require("mediasoup-client");
 const http = require("http");
 const path = require("path");
 const axios = require("axios");
-const ngrok = require("ngrok");
 const fs = require("fs");
 const config = require("./config");
 const checkXSS = require("./XSS.js");
 const Host = require("./Host");
 const Room = require("./Room");
 const Peer = require("./Peer");
-const ServerApi = require("./ServerApi");
 const Logger = require("./Logger");
 const log = new Logger("Server");
-const yamlJS = require("yamljs");
-const Sentry = require("@sentry/node");
-const { CaptureConsole } = require("@sentry/integrations");
 
-// Slack API
-const CryptoJS = require("crypto-js");
-const qS = require("qs");
-const slackEnabled = config.slack.enabled;
-const slackSigningSecret = config.slack.signingSecret;
 const bodyParser = require("body-parser");
 
 const app = express();
@@ -54,22 +44,6 @@ const hostCfg = {
 const apiBasePath = "/api/v1"; // api endpoint path
 const api_docs = host + apiBasePath + "/docs"; // api docs
 
-// Sentry monitoring
-const sentryEnabled = config.sentry.enabled;
-const sentryDSN = config.sentry.DSN;
-const sentryTracesSampleRate = config.sentry.tracesSampleRate;
-if (sentryEnabled) {
-  Sentry.init({
-    dsn: sentryDSN,
-    integrations: [
-      new CaptureConsole({
-        levels: ["error"],
-      }),
-    ],
-    tracesSampleRate: sentryTracesSampleRate,
-  });
-
-}
 
 // Stats
 const defaultStats = {
@@ -79,19 +53,6 @@ const defaultStats = {
 };
 
 // OpenAI/ChatGPT
-let chatGPT;
-if (config.chatGPT.enabled) {
-  if (config.chatGPT.apiKey) {
-    const { Configuration, OpenAIApi } = require("openai");
-    const configuration = new Configuration({
-      basePath: config.chatGPT.basePath,
-      apiKey: config.chatGPT.apiKey,
-    });
-    chatGPT = new OpenAIApi(configuration);
-  } else {
-    log.warning("ChatGPT seems enabled, but you missing the apiKey!");
-  }
-}
 
 // directory
 const dir = {
@@ -188,6 +149,20 @@ async function startServer() {
       res.sendFile(views.landing);
     }
   });
+
+  app.get("/api/rooms/:roomId/users", (req, res) => {
+    const roomId = req.params.roomId;
+    const room = roomList.get(roomId);
+    const peersMap = room.getPeers();
+    const peersArray = Array.from(peersMap.values());
+
+    if (peersArray) {
+      const users = peersArray.map(peer => (peer.peer_info.peer_name));
+      res.json(users);
+  } else {
+      res.status(404).send('Room not found');
+  }
+});
 
   // handle logged on host protected
   app.get(["/logged"], (req, res) => {
@@ -293,39 +268,6 @@ async function startServer() {
   });
 
   // ####################################################
-  // NGROK
-  // ####################################################
-
-  async function ngrokStart() {
-    try {
-      await ngrok.authtoken(config.ngrok.authToken);
-      await ngrok.connect(config.server.listen.port);
-      const api = ngrok.getApi();
-      // const data = JSON.parse(await api.get('api/tunnels')); // v3
-      const data = await api.listTunnels(); // v4
-      const pu0 = data.tunnels[0].public_url;
-      const pu1 = data.tunnels[1].public_url;
-      const tunnel = pu0.startsWith("https") ? pu0 : pu1;
-      log.info("Listening on", {
-        node_version: process.versions.node,
-        hostConfig: hostCfg,
-        announced_ip: announcedIP,
-        server: host,
-        server_tunnel: tunnel,
-        api_docs: api_docs,
-        mediasoup_worker_bin: mediasoup.workerBin,
-        mediasoup_server_version: mediasoup.version,
-        mediasoup_client_version: mediasoupClient.version,
-        ip_lookup_enabled: config.IPLookup.enabled,
-        sentry_enabled: sentryEnabled,
-      });
-    } catch (err) {
-      log.error("Ngrok Start error: ", err.body);
-      process.exit(1);
-    }
-  }
-
-  // ####################################################
   // START SERVER
   // ####################################################
 
@@ -408,6 +350,7 @@ async function startServer() {
       log.error("Client error", error);
       socket.destroy();
     });
+
 
     socket.on("createRoom", async ({ room_id }, callback) => {
       socket.room_id = room_id;
@@ -587,33 +530,7 @@ async function startServer() {
       roomList.get(socket.room_id).broadCast(socket.id, "updatePeerInfo", data);
     });
 
-    socket.on("fileInfo", (dataObject) => {
-      if (!roomList.has(socket.room_id)) return;
 
-      const data = checkXSS(dataObject);
-
-      if (!isValidFileName(data.fileName)) {
-        log.debug("File name not valid", data);
-        return;
-      }
-
-      log.debug("Send File Info", data);
-      if (data.broadcast) {
-        roomList.get(socket.room_id).broadCast(socket.id, "fileInfo", data);
-      } else {
-        roomList.get(socket.room_id).sendTo(data.peer_id, "fileInfo", data);
-      }
-    });
-
-    socket.on("file", (data) => {
-      if (!roomList.has(socket.room_id)) return;
-
-      if (data.broadcast) {
-        roomList.get(socket.room_id).broadCast(socket.id, "file", data);
-      } else {
-        roomList.get(socket.room_id).sendTo(data.peer_id, "file", data);
-      }
-    });
 
     socket.on("fileAbort", (dataObject) => {
       if (!roomList.has(socket.room_id)) return;
@@ -645,26 +562,7 @@ async function startServer() {
       }
     });
 
-    socket.on("wbCanvasToJson", (dataObject) => {
-      if (!roomList.has(socket.room_id)) return;
 
-      const data = checkXSS(dataObject);
-
-      // let objLength = bytesToSize(Object.keys(data).length);
-      // log.debug('Send Whiteboard canvas JSON', { length: objLength });
-      roomList.get(socket.room_id).broadCast(socket.id, "wbCanvasToJson", data);
-    });
-
-    socket.on("whiteboardAction", (dataObject) => {
-      if (!roomList.has(socket.room_id)) return;
-
-      const data = checkXSS(dataObject);
-
-      log.debug("Whiteboard", data);
-      roomList
-        .get(socket.room_id)
-        .broadCast(socket.id, "whiteboardAction", data);
-    });
 
     socket.on("setVideoOff", (dataObject) => {
       if (!roomList.has(socket.room_id)) return;
@@ -776,6 +674,10 @@ async function startServer() {
 
       socket.emit("newProducers", producerList);
     });
+
+    socket.on("updateUserList", ()=>{
+
+    })
 
     socket.on("createWebRtcTransport", async (_, callback) => {
       if (!roomList.has(socket.room_id)) {
@@ -958,37 +860,6 @@ async function startServer() {
       }
     });
 
-    socket.on("getChatGPT", async ({ time, room, name, prompt }, cb) => {
-      if (!roomList.has(socket.room_id)) return;
-      if (!config.chatGPT.enabled)
-        return cb("ChatGPT seems disabled, try later!");
-      try {
-        // https://platform.openai.com/docs/api-reference/completions/create
-        const completion = await chatGPT.createCompletion({
-          model: config.chatGPT.model || "text-davinci-003",
-          prompt: prompt,
-          max_tokens: config.chatGPT.max_tokens,
-          temperature: config.chatGPT.temperature,
-        });
-        const response = completion.data.choices[0].text;
-        log.debug("ChatGPT", {
-          time: time,
-          room: room,
-          name: name,
-          prompt: prompt,
-          response: response,
-        });
-        cb(response);
-      } catch (error) {
-        if (error.response) {
-          log.error("ChatGPT", error.response.data);
-          cb(error.response.data.error.message);
-        } else {
-          log.error("ChatGPT", error.message);
-          cb(error.message);
-        }
-      }
-    });
 
     socket.on("disconnect", async () => {
       if (!roomList.has(socket.room_id)) return;

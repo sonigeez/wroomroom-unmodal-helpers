@@ -66,11 +66,11 @@ ipcMain.on("wifi-credentials", async (event, { ssid, password }) => {
 
 function createWifiConfigWindow() {
   const wifiConfigWindow = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 500,
+    height: 500,
     webPreferences: {
-      nodeIntegration: true, // Enable Node integration
-      contextIsolation: false // Disable context isolation
+      nodeIntegration: true, 
+      contextIsolation: false
     },
   });
 
@@ -103,6 +103,9 @@ function runServer() {
       // Load URL in the first window
       win1.loadURL(`https://${localIP}:8010/view/room`);
 
+      //load full screen
+      win1.setFullScreen(true);
+
       // Second window, positioned based on external display
       const win2 = new BrowserWindow({
         x: externalDisplay.bounds.x + 50,
@@ -116,6 +119,8 @@ function runServer() {
 
       // Load URL in the second window
       win2.loadURL(`https://${localIP}:8010/qrcode/room`);
+      //load full screen
+      win2.setFullScreen(true);
     } else {
       // No external display found, load second URL in the first window
       win1.loadURL(`https://${localIP}:8010/qrcode/room`);

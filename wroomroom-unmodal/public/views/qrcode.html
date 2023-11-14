@@ -7,36 +7,87 @@
     <title>QR Code Generator</title>
     <style>
       * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
 
-      body {
-        height: 100vh;
-        margin: auto;
-        display: grid;
-        place-items: center;
-        font-family: sans-serif;
-      }
+            body {
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                font-family: 'Arial', sans-serif;
+                background-color: #f4f4f4;
+                color: #333;
+                padding: 20px;
+            }
 
-      .time {
-        margin-top: 20px;
-        font-size: 24px;
-      }
+            #app {
+                display: flex;
+                /* flex-direction: column; */
+            }
 
+            #qrcode-container, #user-list-container {
+                text-align: center;
+                background: white;
+                padding: 2vw;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                margin: 1vw 1vw;
+                width: 100%;
+            }
+
+            h1 {
+                color: #27ae60;
+                margin-bottom: 1vw;
+            }
+
+            #qrcode {
+                margin-bottom: 1vw;
+            }
+
+            .time {
+                font-size: 24px;
+                color: #2c3e50;
+                margin-bottom: 2vw;
+            }
+
+            #users {
+                list-style-type: none;
+                padding: 0;
+                text-align: left;
+            }
+           
+
+            #users li {
+                background: #ecf0f1;
+                padding: 1vw;
+                border-radius: 4px;
+                word-break: break-all;
+            }
     </style>
   </head>
   <body>
-    <h1>QR Code Generator</h1>
-    <div id="qrcode"></div>
-    <div class="time" id="time">00:00:00</div>
+    <div id="app">
+    <div id="qrcode-container">
+      <h1>QR Code Generator</h1>
+      <div id="qrcode"></div>
+      <div class="time" id="time">00:00:00</div>
+    </div>
 
+    <div id="user-list-container">
+      <h2>Connected Users</h2>
+      <ul id="users"></ul>
+    </div>
+  </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <script>
       const qrcode = document.getElementById("qrcode");
       const timeElement = document.getElementById("time");
+      let allUsers = [];
 
       function getRoomIdFromURL() {
         const path = window.location.pathname;
@@ -53,10 +104,26 @@
       // Function to update time
       function updateTime() {
         const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, "0");
+        const minutes = String(now.getMinutes()).padStart(2, "0");
+        const seconds = String(now.getSeconds()).padStart(2, "0");
         timeElement.textContent = `${hours}:${minutes}:${seconds}`;
+        //fetch users from route localhost:8010/api/rooms/room/users
+        fetch(`http://localhost:8010/api/rooms/${roomId}/users`)
+          .then((res) => res.json())
+          .then((data) => {
+            console.log(data);
+            allUsers = data;
+            let users = "";
+            //remove "viewer" string
+            allUsers = allUsers.filter((user) => user !== "viewer");
+            allUsers.forEach((user) => {
+              users += `<li>${user}</li>`;
+            });
+            document.getElementById("users").innerHTML = users;
+
+          });
+
       }
 
       // Update time every second
